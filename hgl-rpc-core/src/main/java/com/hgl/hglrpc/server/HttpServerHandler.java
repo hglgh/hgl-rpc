@@ -1,10 +1,12 @@
 package com.hgl.hglrpc.server;
 
+import com.hgl.hglrpc.RpcApplication;
 import com.hgl.hglrpc.model.RpcRequest;
 import com.hgl.hglrpc.model.RpcResponse;
 import com.hgl.hglrpc.registry.LocalRegistry;
 import com.hgl.hglrpc.serializer.JdkSerializer;
 import com.hgl.hglrpc.serializer.Serializer;
+import com.hgl.hglrpc.serializer.SerializerFactory;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerRequest;
@@ -26,7 +28,8 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
     @Override
     public void handle(HttpServerRequest request) {
         // 指定序列化器
-        JdkSerializer jdkSerializer = new JdkSerializer();
+        final Serializer serializer = SerializerFactory.getInstance(RpcApplication.getRpcConfig().getSerializer());
+
         // 记录日志
         System.out.println("Received request: " + request.method() + " " + request.uri());
 
@@ -35,7 +38,7 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
             byte[] bytes = body.getBytes();
             RpcRequest rpcRequest;
             try {
-                rpcRequest = jdkSerializer.deserialize(bytes, RpcRequest.class);
+                rpcRequest = serializer.deserialize(bytes, RpcRequest.class);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -43,7 +46,7 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
             RpcResponse rpcResponse = new RpcResponse();
             if (rpcRequest == null) {
                 rpcResponse.setMessage("rpcRequest is null");
-                doResponse(request, rpcResponse, jdkSerializer);
+                doResponse(request, rpcResponse, serializer);
                 return;
             }
             // 获取要调用的服务实现类，通过反射调用
@@ -61,7 +64,7 @@ public class HttpServerHandler implements Handler<HttpServerRequest> {
                 rpcResponse.setException(e);
             }
             // 返回响应结果
-            doResponse(request, rpcResponse, jdkSerializer);
+            doResponse(request, rpcResponse, serializer);
         });
     }
 
