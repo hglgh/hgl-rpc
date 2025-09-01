@@ -1,5 +1,6 @@
 package com.hgl.example.provider;
 
+import com.hgl.example.common.service.UserService;
 import com.hgl.hglrpc.RpcApplication;
 import com.hgl.hglrpc.registry.LocalRegistry;
 import com.hgl.hglrpc.server.VertxHttpServer;
@@ -17,7 +18,7 @@ public class ProviderExample {
 //        RpcApplication.init();
 
         // 注册服务
-        LocalRegistry.register("userService", UserServiceImpl.class);
+        LocalRegistry.register(UserService.class.getName(), UserServiceImpl.class);
 
         // 启动 web 服务
         new VertxHttpServer().doStart(RpcApplication.getRpcConfig().getServerPort());
