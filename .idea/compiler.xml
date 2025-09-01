@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="hgl-rpc-easy" />
+        <module name="hgl-rpc-core" />
         <module name="example-provider" />
         <module name="example-common" />
         <module name="example-consumer" />

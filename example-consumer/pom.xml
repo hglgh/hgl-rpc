@@ -16,7 +16,8 @@
         </dependency>
         <dependency>
             <groupId>com.hgl</groupId>
-            <artifactId>hgl-rpc-easy</artifactId>
+<!--            <artifactId>hgl-rpc-easy</artifactId>-->
+            <artifactId>hgl-rpc-core</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
