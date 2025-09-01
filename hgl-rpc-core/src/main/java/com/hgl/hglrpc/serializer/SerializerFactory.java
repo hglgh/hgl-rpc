@@ -13,14 +13,11 @@ import java.util.Map;
  * @Create: 2025/9/1 16:51
  */
 public class SerializerFactory {
-    static {
-        SpiLoader.load(Serializer.class);
-    }
 
     /**
-     * 默认序列化器
+     * 是否已加载SPI
      */
-    private static final Serializer DEFAULT_SERIALIZER = new JdkSerializer();
+    private static volatile boolean loaded = false;
 
     /**
      * 获取实例
@@ -29,6 +26,15 @@ public class SerializerFactory {
      * @return 实例
      */
     public static Serializer getInstance(String key) {
+        // 双重检查锁定实现懒加载
+        if (!loaded) {
+            synchronized (SerializerFactory.class) {
+                if (!loaded) {
+                    SpiLoader.load(Serializer.class);
+                    loaded = true;
+                }
+            }
+        }
         return SpiLoader.getInstance(Serializer.class, key);
     }
 }
