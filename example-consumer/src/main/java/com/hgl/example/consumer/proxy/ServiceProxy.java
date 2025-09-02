@@ -5,7 +5,6 @@ import cn.hutool.http.HttpResponse;
 import com.hgl.hglrpc.RpcApplication;
 import com.hgl.hglrpc.model.RpcRequest;
 import com.hgl.hglrpc.model.RpcResponse;
-import com.hgl.hglrpc.serializer.JdkSerializer;
 import com.hgl.hglrpc.serializer.Serializer;
 import com.hgl.hglrpc.serializer.SerializerFactory;
 import lombok.extern.slf4j.Slf4j;

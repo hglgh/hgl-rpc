@@ -14,6 +14,7 @@ public class JdkSerializer implements Serializer {
     public <T> byte[] serialize(T object) throws IOException {
         try (
                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                // 装饰器模式，创建一个字节数组输出流，然后创建一个ObjectOutputStream对象，将字节数组输出流转换为ObjectOutputStream对象
                 ObjectOutputStream objectOutputStream = new ObjectOutputStream(outputStream)
         ) {
             objectOutputStream.writeObject(object);
@@ -24,8 +25,8 @@ public class JdkSerializer implements Serializer {
     @Override
     @SuppressWarnings("unchecked")
     public <T> T deserialize(byte[] bytes, Class<T> type) throws IOException {
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
-        try (ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
+             ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
             return (T) objectInputStream.readObject();
         } catch (ClassNotFoundException e) {
             throw new IOException(e);

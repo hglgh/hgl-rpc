@@ -68,6 +68,7 @@ public class SpiLoader {
      * @param <T>    泛型
      * @return 实例
      */
+    @SuppressWarnings("unchecked")
     public static <T> T getInstance(Class<?> tClass, String key) {
         String tClassName = tClass.getName();
         Map<String, Class<?>> keyClassMap = LOADER_MAP.get(tClassName);
