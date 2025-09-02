@@ -1,7 +1,10 @@
 package com.hgl.hglrpc;
 
+import com.hgl.hglrpc.config.RegistryConfig;
 import com.hgl.hglrpc.config.RpcConfig;
 import com.hgl.hglrpc.constant.RpcConstant;
+import com.hgl.hglrpc.registry.Registry;
+import com.hgl.hglrpc.registry.RegistryFactory;
 import com.hgl.hglrpc.utils.ConfigUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +27,11 @@ public class RpcApplication {
     private static void init(RpcConfig newRpcConfig) {
         rpcConfig = newRpcConfig;
         log.info("rpc init, config = {}", newRpcConfig.toString());
+        // 注册中心初始化
+        RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
+        Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
+        registry.init(registryConfig);
+        log.info("registry init, config = {}", registryConfig);
     }
 
     /**

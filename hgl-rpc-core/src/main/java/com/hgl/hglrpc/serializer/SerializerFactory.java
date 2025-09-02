@@ -20,6 +20,11 @@ public class SerializerFactory {
     private static volatile boolean loaded = false;
 
     /**
+     *  默认序列化器
+     */
+    private static final Serializer DEFAULT_SERIALIZER = new JdkSerializer();
+
+    /**
      * 获取实例
      *
      * @param key 键
