@@ -17,6 +17,13 @@
             <version>0.8.5</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.apache.curator/curator-x-discovery -->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-x-discovery</artifactId>
+            <version>5.9.0</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/io.vertx/vertx-core -->
         <dependency>
             <groupId>io.vertx</groupId>

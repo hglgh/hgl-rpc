@@ -151,7 +151,8 @@ public class EtcdRegistry implements Registry {
                     ServiceMetaInfo serviceMetaInfo = JSONUtil.toBean(value, ServiceMetaInfo.class);
                     register(serviceMetaInfo);
                 } catch (Exception e) {
-                    throw new RuntimeException(key + "续签失败", e);
+                    System.err.println(key + "续签失败: " + e.getMessage());
+                    // 可以考虑从本地缓存中移除无法续签的key
                 }
             }
         });
@@ -195,6 +196,10 @@ public class EtcdRegistry implements Registry {
                 throw new RuntimeException(key + "下线失败", e);
             }
         }
+
+        // 清空本地缓存
+        localRegisterNodeKeySet.clear();
+
         // 释放资源
         if (kvClient != null) {
             kvClient.close();

@@ -5,3 +5,6 @@ rpc:
   mock: false
   serializer: kryo
   role: customer
+  registryConfig:
+    registry: zookeeper
+    address: 192.168.6.128:2181

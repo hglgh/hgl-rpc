@@ -4,6 +4,8 @@ import com.hgl.example.common.model.User;
 import com.hgl.example.common.service.UserService;
 import com.hgl.example.consumer.proxy.ServiceProxyFactory;
 
+import java.io.IOException;
+
 /**
  * @ClassName: ConsumerExample
  * @Package: com.hgl.example.consumer
