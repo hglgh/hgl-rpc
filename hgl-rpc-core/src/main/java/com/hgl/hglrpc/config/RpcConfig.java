@@ -44,6 +44,11 @@ public class RpcConfig {
     private String serializer = SerializerKeys.JDK;
 
     /**
+     * 角色
+     */
+    private String role = "provider";
+
+    /**
      * 注册中心配置
      */
     private RegistryConfig registryConfig = new RegistryConfig();

@@ -4,3 +4,4 @@ rpc:
   serverPort: 8081
   mock: false
   serializer: kryo
+  role: customer
