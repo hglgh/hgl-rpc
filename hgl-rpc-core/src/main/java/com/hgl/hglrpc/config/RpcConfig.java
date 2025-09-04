@@ -1,5 +1,6 @@
 package com.hgl.hglrpc.config;
 
+import com.hgl.hglrpc.loadbalancer.LoadBalancerKeys;
 import com.hgl.hglrpc.serializer.SerializerKeys;
 import lombok.Data;
 
@@ -52,6 +53,11 @@ public class RpcConfig {
      * 传输协议
      */
     private String protocol = "tcp";
+
+    /**
+     * 负载均衡器
+     */
+    private String loadBalancer = LoadBalancerKeys.ROUND_ROBIN;
 
     /**
      * 注册中心配置

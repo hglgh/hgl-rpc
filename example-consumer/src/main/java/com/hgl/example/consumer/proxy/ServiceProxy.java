@@ -4,6 +4,8 @@ import cn.hutool.core.collection.CollUtil;
 import com.hgl.hglrpc.RpcApplication;
 import com.hgl.hglrpc.config.RpcConfig;
 import com.hgl.hglrpc.constant.RpcConstant;
+import com.hgl.hglrpc.loadbalancer.LoadBalancer;
+import com.hgl.hglrpc.loadbalancer.LoadBalancerFactory;
 import com.hgl.hglrpc.model.RpcRequest;
 import com.hgl.hglrpc.model.RpcResponse;
 import com.hgl.hglrpc.model.ServiceMetaInfo;
@@ -14,7 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @ClassName: ServiceProxy
@@ -39,9 +43,10 @@ public class ServiceProxy implements InvocationHandler {
                 .args(args)
                 .build();
         // 获取服务提供者请求元信息
-        ServiceMetaInfo selectedServiceMetaInfo = getSelectedServiceMetaInfo(serviceName);
+        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+        ServiceMetaInfo selectedServiceMetaInfo = getSelectedServiceMetaInfo(rpcRequest, rpcConfig, serviceName);
         // 发送 TCP 请求
-        RpcResponse rpcResponse = VertxClientFactory.getInstance(RpcApplication.getRpcConfig().getProtocol()).doRequest(rpcRequest, selectedServiceMetaInfo);
+        RpcResponse rpcResponse = VertxClientFactory.getInstance(rpcConfig.getProtocol()).doRequest(rpcRequest, selectedServiceMetaInfo);
         return rpcResponse.getData();
 
     }
@@ -52,9 +57,8 @@ public class ServiceProxy implements InvocationHandler {
      * @param serviceName 服务名称
      * @return 请求元信息
      */
-    private static ServiceMetaInfo getSelectedServiceMetaInfo(String serviceName) {
+    private static ServiceMetaInfo getSelectedServiceMetaInfo(RpcRequest rpcRequest, RpcConfig rpcConfig, String serviceName) {
         // 从注册中心获取服务提供者请求地址
-        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
         Registry registry = RegistryFactory.getInstance(rpcConfig.getRegistryConfig().getRegistry());
         ServiceMetaInfo serviceMetaInfo = new ServiceMetaInfo();
         serviceMetaInfo.setServiceName(serviceName);
@@ -63,7 +67,10 @@ public class ServiceProxy implements InvocationHandler {
         if (CollUtil.isEmpty(serviceMetaInfoList)) {
             throw new RuntimeException("暂无服务地址");
         }
-        // 暂时先取第一个
-        return serviceMetaInfoList.get(0);
+        LoadBalancer loadBalancer = LoadBalancerFactory.getInstance(rpcConfig.getLoadBalancer());
+        // 将调用方法名（请求路径）作为负载均衡参数
+        Map<String, Object> requestParams = new HashMap<>();
+        requestParams.put("methodName", rpcRequest.getMethodName());
+        return loadBalancer.select(requestParams, serviceMetaInfoList);
     }
 }
