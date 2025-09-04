@@ -9,6 +9,7 @@ import com.hgl.hglrpc.registry.LocalRegistry;
 import com.hgl.hglrpc.registry.Registry;
 import com.hgl.hglrpc.registry.RegistryFactory;
 import com.hgl.hglrpc.server.VertxHttpServer;
+import com.hgl.hglrpc.server.tcp.VertxTcpServer;
 
 /**
  * @ClassName: ProviderExample
@@ -39,6 +40,6 @@ public class ProviderExample {
         }
 
         // 启动 web 服务
-        new VertxHttpServer().doStart(RpcApplication.getRpcConfig().getServerPort());
+        new VertxTcpServer().doStart(RpcApplication.getRpcConfig().getServerPort());
     }
 }
