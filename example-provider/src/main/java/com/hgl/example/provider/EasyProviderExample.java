@@ -2,7 +2,7 @@ package com.hgl.example.provider;
 
 import com.hgl.example.common.service.UserService;
 import com.hgl.hglrpc.registry.LocalRegistry;
-import com.hgl.hglrpc.server.VertxHttpServer;
+import com.hgl.hglrpc.server.http.VertxHttpServer;
 
 /**
  * @ClassName: EasyProviderExample

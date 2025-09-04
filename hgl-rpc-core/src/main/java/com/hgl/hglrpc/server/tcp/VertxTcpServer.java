@@ -1,11 +1,8 @@
 package com.hgl.hglrpc.server.tcp;
 
-import com.hgl.hglrpc.server.HttpServer;
-import io.vertx.core.Handler;
+import com.hgl.hglrpc.server.VertxServer;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetServer;
-import io.vertx.core.parsetools.RecordParser;
 
 /**
  * @ClassName: VertxTcpServer
@@ -14,7 +11,7 @@ import io.vertx.core.parsetools.RecordParser;
  * @Author HGL
  * @Create: 2025/9/3 15:05
  */
-public class VertxTcpServer implements HttpServer {
+public class VertxTcpServer implements VertxServer {
 
 //    private byte[] handleRequest(byte[] requestData) {
 //        // 在这里编写处理请求的逻辑，根据 requestData 构造响应数据并返回
@@ -74,9 +71,5 @@ public class VertxTcpServer implements HttpServer {
                 System.err.printf("Failed to start TCP server: %s\n", result.cause());
             }
         });
-    }
-
-    public static void main(String[] args) {
-        new VertxTcpServer().doStart(8080);
     }
 }

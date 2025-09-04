@@ -1,5 +1,6 @@
-package com.hgl.hglrpc.server;
+package com.hgl.hglrpc.server.http;
 
+import com.hgl.hglrpc.server.VertxServer;
 import io.vertx.core.Vertx;
 
 /**
@@ -9,19 +10,15 @@ import io.vertx.core.Vertx;
  * @Author HGL
  * @Create: 2025/8/29 15:12
  */
-public class VertxHttpServer implements HttpServer {
+public class VertxHttpServer implements VertxServer {
     @Override
     public void doStart(int port) {
-
         // 创建vertx 实例
         Vertx vertx = Vertx.vertx();
-
         // 创建 HTTP 服务器
         io.vertx.core.http.HttpServer httpServer = vertx.createHttpServer();
-
         // 监听端口并处理请求
         httpServer.requestHandler(new HttpServerHandler());
-
         // 启动 HTTP 服务器并监听指定端口
         httpServer.listen(port)
                 .onSuccess(server -> System.out.printf("HTTP server started on port %d\n", server.actualPort()))

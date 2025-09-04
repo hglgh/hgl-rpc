@@ -9,12 +9,14 @@ import com.hgl.hglrpc.protocol.ProtocolConstant;
 import com.hgl.hglrpc.protocol.ProtocolMessage;
 import com.hgl.hglrpc.protocol.ProtocolMessageSerializerEnum;
 import com.hgl.hglrpc.protocol.ProtocolMessageTypeEnum;
+import com.hgl.hglrpc.server.client.VertxClient;
 import com.hgl.hglrpc.server.tcp.codec.ProtocolMessageDecoder;
 import com.hgl.hglrpc.server.tcp.codec.ProtocolMessageEncoder;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetSocket;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -27,7 +29,8 @@ import java.util.concurrent.ExecutionException;
  * @Author HGL
  * @Create: 2025/9/4 11:09
  */
-public class VertxTcpClient {
+@Slf4j
+public class VertxTcpClient implements VertxClient {
     /**
      * 发送请求
      *
@@ -37,8 +40,10 @@ public class VertxTcpClient {
      * @throws InterruptedException 线程中断异常
      * @throws ExecutionException   执行异常
      */
+    @Override
     @SuppressWarnings("unchecked")
-    public static RpcResponse doRequest(RpcRequest rpcRequest, ServiceMetaInfo serviceMetaInfo) throws InterruptedException, ExecutionException {
+    public RpcResponse doRequest(RpcRequest rpcRequest, ServiceMetaInfo serviceMetaInfo) throws InterruptedException, ExecutionException {
+        log.info("http client send request to server");
         // 发送 TCP 请求
         Vertx vertx = Vertx.vertx();
         NetClient netClient = vertx.createNetClient();

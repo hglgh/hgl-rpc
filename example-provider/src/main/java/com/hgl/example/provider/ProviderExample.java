@@ -8,8 +8,7 @@ import com.hgl.hglrpc.model.ServiceMetaInfo;
 import com.hgl.hglrpc.registry.LocalRegistry;
 import com.hgl.hglrpc.registry.Registry;
 import com.hgl.hglrpc.registry.RegistryFactory;
-import com.hgl.hglrpc.server.VertxHttpServer;
-import com.hgl.hglrpc.server.tcp.VertxTcpServer;
+import com.hgl.hglrpc.server.VertxServerFactory;
 
 /**
  * @ClassName: ProviderExample
@@ -21,11 +20,24 @@ import com.hgl.hglrpc.server.tcp.VertxTcpServer;
 public class ProviderExample {
     public static void main(String[] args) {
 
-        // 注册服务
         String serviceName = UserService.class.getName();
+        // 注册服务到本地缓存
         LocalRegistry.register(serviceName, UserServiceImpl.class);
 
         // 注册服务到注册中心
+        RpcConfig rpcConfig = registryToCenter(serviceName);
+
+        // 启动 web 服务
+        VertxServerFactory.getInstance(rpcConfig.getProtocol()).doStart(rpcConfig.getServerPort());
+    }
+
+    /**
+     * 注册服务到注册中心
+     *
+     * @param serviceName 服务名
+     * @return RpcConfig
+     */
+    private static RpcConfig registryToCenter(String serviceName) {
         RpcConfig rpcConfig = RpcApplication.getRpcConfig();
         RegistryConfig registryConfig = rpcConfig.getRegistryConfig();
         Registry registry = RegistryFactory.getInstance(registryConfig.getRegistry());
@@ -38,8 +50,6 @@ public class ProviderExample {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        // 启动 web 服务
-        new VertxTcpServer().doStart(RpcApplication.getRpcConfig().getServerPort());
+        return rpcConfig;
     }
 }

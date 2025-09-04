@@ -49,6 +49,11 @@ public class RpcConfig {
     private String role = "provider";
 
     /**
+     * 传输协议
+     */
+    private String protocol = "tcp";
+
+    /**
      * 注册中心配置
      */
     private RegistryConfig registryConfig = new RegistryConfig();
