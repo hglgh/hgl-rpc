@@ -2,6 +2,7 @@ package com.hgl.example.provider;
 
 import com.hgl.example.common.model.User;
 import com.hgl.example.common.service.UserService;
+import com.hgl.hglrpc.RpcApplication;
 
 /**
  * @ClassName: UserServiceImpl
@@ -13,7 +14,7 @@ import com.hgl.example.common.service.UserService;
 public class UserServiceImpl implements UserService {
     @Override
     public User getUser(User user) {
-        System.out.println("用户名：" + user.getName());
+        System.out.println("用户名：" + user.getName() + "，处理实例端口：" + RpcApplication.getRpcConfig().getServerPort());
         return user;
     }
 }

@@ -4,6 +4,7 @@ import com.hgl.hglrpc.model.ServiceMetaInfo;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -15,22 +16,34 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class RoundRobinLoadBalancer implements LoadBalancer {
     /**
-     * 当前轮询的下标
+     * 为每个服务维护一个独立的轮询计数器
+     * key: 服务键名 (serviceName:serviceVersion)
+     * value: 该服务的轮询索引
      */
-    private final AtomicInteger currentIndex = new AtomicInteger(0);
+    private final Map<String, AtomicInteger> serviceCounterMap = new ConcurrentHashMap<>();
 
     @Override
     public ServiceMetaInfo select(Map<String, Object> requestParams, List<ServiceMetaInfo> serviceMetaInfoList) {
         if (serviceMetaInfoList.isEmpty()) {
             return null;
         }
+
         // 只有一个服务，无需轮询
-        int size = serviceMetaInfoList.size();
-        if (size == 1) {
+        if (serviceMetaInfoList.size() == 1) {
             return serviceMetaInfoList.get(0);
         }
-        // 取模算法轮询
-        int index = currentIndex.getAndIncrement() % size;
+
+        // 获取第一个服务的键名作为标识（假设同一列表中服务键名相同）
+        String serviceKey = serviceMetaInfoList.get(0).getServiceKey();
+
+        // 获取或创建该服务的计数器
+        AtomicInteger counter = serviceCounterMap.computeIfAbsent(
+                serviceKey,
+                k -> new AtomicInteger(0)
+        );
+
+        // 原子递增并取模，确保索引在有效范围内
+        int index = Math.abs(counter.getAndIncrement()) % serviceMetaInfoList.size();
         return serviceMetaInfoList.get(index);
     }
 }

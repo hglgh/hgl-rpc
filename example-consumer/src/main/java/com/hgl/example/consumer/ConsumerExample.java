@@ -17,14 +17,17 @@ public class ConsumerExample {
         UserService userService = ServiceProxyFactory.getProxy(UserService.class);
         User user = new User();
         user.setName("hgl");
-        // 调用
-        User newUser = userService.getUser(user);
-        if (newUser != null) {
-            System.out.println(newUser.getName());
-        } else {
-            System.out.println("user == null");
+        for (int i = 0; i < 10; i++) {
+
+            // 调用
+            User newUser = userService.getUser(user);
+            if (newUser != null) {
+                System.out.println(newUser.getName());
+            } else {
+                System.out.println("user == null");
+            }
+//            long number = userService.getNumber();
+//            System.out.println(number);
         }
-        long number = userService.getNumber();
-        System.out.println(number);
     }
 }
