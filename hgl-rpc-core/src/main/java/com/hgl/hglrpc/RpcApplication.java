@@ -42,7 +42,7 @@ public class RpcApplication {
     /**
      * 初始化
      */
-    private static void init() {
+    public static void init() {
         RpcConfig newRpcConfig;
         try {
             newRpcConfig = ConfigUtils.loadConfig(RpcConfig.class, RpcConstant.DEFAULT_CONFIG_PREFIX);

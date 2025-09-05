@@ -1,0 +1,3 @@
+roundRobin=com.hgl.hglrpc.loadbalancer.RoundRobinLoadBalancer
+random=com.hgl.hglrpc.loadbalancer.RandomLoadBalancer
+consistentHash=com.hgl.hglrpc.loadbalancer.ConsistentHashLoadBalancer

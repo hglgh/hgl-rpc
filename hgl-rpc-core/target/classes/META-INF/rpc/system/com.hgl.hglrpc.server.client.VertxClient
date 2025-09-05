@@ -1,0 +1,2 @@
+http=com.hgl.hglrpc.server.http.VertxHttpClient
+tcp=com.hgl.hglrpc.server.tcp.VertxTcpClient

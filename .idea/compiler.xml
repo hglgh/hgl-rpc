@@ -8,11 +8,21 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="hgl-rpc-easy" />
-        <module name="hgl-rpc-core" />
+        <module name="hgl-rpc-spring-boot-starter" />
+        <module name="example-springboot-provider" />
+        <module name="example-springboot-consumer" />
         <module name="example-provider" />
         <module name="example-common" />
+        <module name="hgl-rpc-core" />
         <module name="example-consumer" />
       </profile>
     </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="example-springboot-consumer" options="-parameters" />
+      <module name="example-springboot-provider" options="-parameters" />
+      <module name="hgl-rpc-spring-boot-starter" options="-parameters" />
+    </option>
   </component>
 </project>

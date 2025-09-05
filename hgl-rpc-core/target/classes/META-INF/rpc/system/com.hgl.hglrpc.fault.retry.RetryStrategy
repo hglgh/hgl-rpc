@@ -1,0 +1,2 @@
+no=com.hgl.hglrpc.fault.retry.NoRetryStrategy
+fixedInterval=com.hgl.hglrpc.fault.retry.FixedIntervalRetryStrategy

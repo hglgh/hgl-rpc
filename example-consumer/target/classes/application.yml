@@ -1,0 +1,11 @@
+rpc:
+  name: hglrpc
+  version: 2.0
+  serverPort: 8081
+  mock: false
+  serializer: kryo
+  role: customer
+  retryStrategy: fixedInterval
+#  registryConfig:
+#    registry: zookeeper
+#    address: 192.168.6.128:2181
