@@ -1,0 +1,4 @@
+failBack=com.hgl.hglrpc.fault.tolerant.FailBackTolerantStrategy
+failFast=com.hgl.hglrpc.fault.tolerant.FailFastTolerantStrategy
+failOver=com.hgl.hglrpc.fault.tolerant.FailOverTolerantStrategy
+failSafe=com.hgl.hglrpc.fault.tolerant.FailSafeTolerantStrategy

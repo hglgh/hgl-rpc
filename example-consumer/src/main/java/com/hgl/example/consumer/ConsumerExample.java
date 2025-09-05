@@ -2,7 +2,7 @@ package com.hgl.example.consumer;
 
 import com.hgl.example.common.model.User;
 import com.hgl.example.common.service.UserService;
-import com.hgl.example.consumer.proxy.ServiceProxyFactory;
+import com.hgl.hglrpc.proxy.ServiceProxyFactory;
 
 /**
  * @ClassName: ConsumerExample

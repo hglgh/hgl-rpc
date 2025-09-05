@@ -1,4 +1,4 @@
-package com.hgl.example.consumer.proxy;
+package com.hgl.hglrpc.proxy;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,10 +19,9 @@ public class MockServiceProxy implements InvocationHandler {
      * 调用代理
      *
      * @return 生成的代理对象
-     * @throws Throwable 抛出异常
      */
     @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+    public Object invoke(Object proxy, Method method, Object[] args) {
         // 根据方法的返回值类型，生成特定的默认值对象
         Class<?> methodReturnType = method.getReturnType();
         log.info("mock invoke {}", method.getName());

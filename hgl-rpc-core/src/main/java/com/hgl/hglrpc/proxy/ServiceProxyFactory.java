@@ -1,4 +1,4 @@
-package com.hgl.example.consumer.proxy;
+package com.hgl.hglrpc.proxy;
 
 import com.hgl.hglrpc.RpcApplication;
 
@@ -38,7 +38,7 @@ public class ServiceProxyFactory {
      * @return 服务代理对象
      */
     @SuppressWarnings("unchecked")
-    private static <T> T getMockProxy(Class<T> serviceClass) {
+    public static <T> T getMockProxy(Class<T> serviceClass) {
         System.out.println("MockServiceProxy的类加载器:" + serviceClass.getClassLoader());
         return (T) Proxy.newProxyInstance(
                 serviceClass.getClassLoader(),

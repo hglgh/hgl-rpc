@@ -1,6 +1,7 @@
 package com.hgl.hglrpc.config;
 
 import com.hgl.hglrpc.fault.retry.RetryStrategyKeys;
+import com.hgl.hglrpc.fault.tolerant.TolerantStrategyKeys;
 import com.hgl.hglrpc.loadbalancer.LoadBalancerKeys;
 import com.hgl.hglrpc.serializer.SerializerKeys;
 import lombok.Data;
@@ -64,6 +65,11 @@ public class RpcConfig {
      * 重试策略
      */
     private String retryStrategy = RetryStrategyKeys.NO;
+
+    /**
+     * 容错策略
+     */
+    private String tolerantStrategy = TolerantStrategyKeys.FAIL_FAST;
 
     /**
      * 注册中心配置
