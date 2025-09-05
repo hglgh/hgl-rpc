@@ -1,5 +1,6 @@
 package com.hgl.hglrpc.config;
 
+import com.hgl.hglrpc.fault.retry.RetryStrategyKeys;
 import com.hgl.hglrpc.loadbalancer.LoadBalancerKeys;
 import com.hgl.hglrpc.serializer.SerializerKeys;
 import lombok.Data;
@@ -58,6 +59,11 @@ public class RpcConfig {
      * 负载均衡器
      */
     private String loadBalancer = LoadBalancerKeys.ROUND_ROBIN;
+
+    /**
+     * 重试策略
+     */
+    private String retryStrategy = RetryStrategyKeys.NO;
 
     /**
      * 注册中心配置

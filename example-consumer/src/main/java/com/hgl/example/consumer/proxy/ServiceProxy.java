@@ -4,6 +4,8 @@ import cn.hutool.core.collection.CollUtil;
 import com.hgl.hglrpc.RpcApplication;
 import com.hgl.hglrpc.config.RpcConfig;
 import com.hgl.hglrpc.constant.RpcConstant;
+import com.hgl.hglrpc.fault.retry.RetryStrategy;
+import com.hgl.hglrpc.fault.retry.RetryStrategyFactory;
 import com.hgl.hglrpc.loadbalancer.LoadBalancer;
 import com.hgl.hglrpc.loadbalancer.LoadBalancerFactory;
 import com.hgl.hglrpc.model.RpcRequest;
@@ -45,8 +47,16 @@ public class ServiceProxy implements InvocationHandler {
         // 获取服务提供者请求元信息
         RpcConfig rpcConfig = RpcApplication.getRpcConfig();
         ServiceMetaInfo selectedServiceMetaInfo = getSelectedServiceMetaInfo(rpcRequest, rpcConfig, serviceName);
-        // 发送 TCP 请求
-        RpcResponse rpcResponse = VertxClientFactory.getInstance(rpcConfig.getProtocol()).doRequest(rpcRequest, selectedServiceMetaInfo);
+        // 使用重试机制
+        RetryStrategy retryStrategy = RetryStrategyFactory.getInstance(rpcConfig.getRetryStrategy());
+        RpcResponse rpcResponse = retryStrategy.doRetry(() -> {
+            try {
+                // 发送 TCP/http 请求
+                return VertxClientFactory.getInstance(rpcConfig.getProtocol()).doRequest(rpcRequest, selectedServiceMetaInfo);
+            } catch (Throwable e) {
+                throw new RuntimeException("发送请求失败：" + e.getMessage());
+            }
+        });
         return rpcResponse.getData();
 
     }

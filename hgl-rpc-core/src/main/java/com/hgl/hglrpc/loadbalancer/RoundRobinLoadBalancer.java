@@ -33,7 +33,7 @@ public class RoundRobinLoadBalancer implements LoadBalancer {
             return serviceMetaInfoList.get(0);
         }
 
-        // 获取第一个服务的键名作为标识（假设同一列表中服务键名相同）
+        // 获取第一个服务的键名作为标识
         String serviceKey = serviceMetaInfoList.get(0).getServiceKey();
 
         // 获取或创建该服务的计数器
