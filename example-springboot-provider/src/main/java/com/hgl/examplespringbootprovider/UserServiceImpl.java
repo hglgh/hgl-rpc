@@ -3,7 +3,6 @@ package com.hgl.examplespringbootprovider;
 import com.hgl.example.common.model.User;
 import com.hgl.example.common.service.UserService;
 import com.hgl.hglrpcspringbootstarter.annotation.RpcService;
-import org.springframework.stereotype.Service;
 
 /**
  * @ClassName: UserServiceImpl
@@ -12,7 +11,6 @@ import org.springframework.stereotype.Service;
  * @Author HGL
  * @Create: 2025/9/5 16:38
  */
-@Service
 @RpcService
 public class UserServiceImpl implements UserService {
     @Override

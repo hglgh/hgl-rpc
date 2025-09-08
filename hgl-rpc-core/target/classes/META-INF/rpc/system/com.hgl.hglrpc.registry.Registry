@@ -1,2 +1,0 @@
-etcd=com.hgl.hglrpc.registry.EtcdRegistry
-zookeeper=com.hgl.hglrpc.registry.ZooKeeperRegistry
