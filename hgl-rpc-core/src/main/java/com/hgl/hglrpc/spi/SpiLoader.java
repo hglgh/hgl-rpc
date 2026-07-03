@@ -1,7 +1,13 @@
 package com.hgl.hglrpc.spi;
 
 import cn.hutool.core.io.resource.ResourceUtil;
+import com.hgl.hglrpc.fault.retry.RetryStrategy;
+import com.hgl.hglrpc.fault.tolerant.TolerantStrategy;
+import com.hgl.hglrpc.loadbalancer.LoadBalancer;
+import com.hgl.hglrpc.registry.Registry;
 import com.hgl.hglrpc.serializer.Serializer;
+import com.hgl.hglrpc.server.VertxServer;
+import com.hgl.hglrpc.server.client.VertxClient;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
@@ -77,13 +83,36 @@ public class SpiLoader {
     private static final String[] SCAN_DIRS = new String[]{RPC_SYSTEM_SPI_DIR, RPC_CUSTOM_SPI_DIR};
 
     /**
-     * 需要动态加载的类型列表
+     * 需要动态加载的类型列表 —— “启动时预热的插件清单”
      *
-     * <p>当前只有 Serializer 使用了 SPI 机制。
-     * 未来如果有更多可插拔的组件（如负载均衡器、注册中心等），
-     * 可以添加到这个列表中。
+     * <p>包含框架中所有通过 SPI 机制可插拔的组件类型。
+     * 当调用 {@link #loadAll()} 时，会逐个扫描这些类型对应的 SPI 配置文件，
+     * 将 key → 实现类 Class 的映射加载到 {@link #LOADER_MAP} 中，
+     * 避免首次调用时的懒加载延迟。</p>
+     *
+     * <p>当前已注册的 SPI 类型：
+     * <pre>
+     *   Serializer     —— 序列化器（jdk/json/kryo/hessian）
+     *   LoadBalancer   —— 负载均衡器（roundRobin/random/consistentHash）
+     *   RetryStrategy  —— 重试策略（no/fixedInterval）
+     *   TolerantStrategy—— 容错策略（failFast/failOver/failSafe/failBack）
+     *   Registry       —— 注册中心（etcd/zookeeper）
+     *   VertxServer    —— 服务端实现（tcp/http）
+     *   VertxClient    —— 客户端实现（tcp/http）
+     * </pre>
+     *
+     * <p>使用 {@link Arrays#asList} 而非 {@code List.of}，
+     * 以保证 Java 8 兼容性（{@code List.of} 是 Java 9+ API）。
      */
-    private static final List<Class<?>> LOAD_CLASS_LIST = Collections.singletonList(Serializer.class);
+    private static final List<Class<?>> LOAD_CLASS_LIST = Arrays.asList(
+            Serializer.class,
+            LoadBalancer.class,
+            RetryStrategy.class,
+            TolerantStrategy.class,
+            Registry.class,
+            VertxServer.class,
+            VertxClient.class
+    );
 
     /**
      * 加载所有 SPI 类型 —— "启动时预热所有插件"
@@ -127,8 +156,15 @@ public class SpiLoader {
         String implClassName = implClass.getName();
         if (!INSTANCE_CACHE.containsKey(implClassName)) {
             try {
-                INSTANCE_CACHE.put(implClassName, implClass.newInstance());
-            } catch (InstantiationException | IllegalAccessException e) {
+                // 使用 getDeclaredConstructor().newInstance() 而非已废弃的 Class.newInstance()：
+                // 1. Class.newInstance() 在 Java 9 中被标记为 @Deprecated，因为它会绕过受检异常
+                // 2. getDeclaredConstructor().newInstance() 更安全：能正确传播受检异常，
+                //    且不受构造器访问修饰符限制（支持 private 构造器的场景）
+                INSTANCE_CACHE.put(implClassName, implClass.getDeclaredConstructor().newInstance());
+            } catch (ReflectiveOperationException e) {
+                // ReflectiveOperationException 是 Java 7 引入的反射异常基类，
+                // 统一捕获 NoSuchMethodException、InstantiationException、
+                // IllegalAccessException、InvocationTargetException 等
                 String errorMsg = String.format("%s 类实例化失败", implClassName);
                 throw new RuntimeException(errorMsg, e);
             }

@@ -4,6 +4,8 @@ import cn.hutool.core.collection.CollUtil;
 import com.hgl.hglrpc.RpcApplication;
 import com.hgl.hglrpc.config.RpcConfig;
 import com.hgl.hglrpc.constant.RpcConstant;
+import com.hgl.hglrpc.fault.circuitbreaker.CircuitBreaker;
+import com.hgl.hglrpc.fault.circuitbreaker.DefaultCircuitBreaker;
 import com.hgl.hglrpc.fault.retry.RetryStrategy;
 import com.hgl.hglrpc.fault.retry.RetryStrategyFactory;
 import com.hgl.hglrpc.fault.tolerant.TolerantStrategy;
@@ -23,6 +25,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * 远程调用的代理人（ServiceProxy）
@@ -38,22 +41,45 @@ import java.util.Map;
  * <h3>一次远程调用的完整旅程：</h3>
  * <pre>
  *  ┌──────────┐      ┌─────────────┐      ┌──────────────┐      ┌──────────────┐
- *  │ 业务代码  │ ──> │  构造请求    │ ──> │ 注册中心发现  │ ──> │  负载均衡     │
- *  │ 调用接口  │      │ (打包快递)   │      │ (查地址簿)    │      │ (挑快递员)    │
+ *  │ 业务代码   │  ──> │  构造请求    │ ──>  │ 注册中心发现    │ ──>  │  负载均衡     │
+ *  │ 调用接口   │      │ (打包快递)   │      │ (查地址簿)     │      │ (挑快递员)    │
  *  └──────────┘      └─────────────┘      └──────────────┘      └──────┬───────┘
  *                                                                       │
  *                                                                       v
  *  ┌──────────┐      ┌─────────────┐      ┌──────────────┐      ┌──────────────┐
- *  │ 返回结果  │ <── │  解析响应    │ <── │ 容错处理      │ <── │  发送请求     │
- *  │ (收件回执)│      │ (拆开回信)   │      │ (挂失重寄)    │      │ (寄出快递)    │
+ *  │ 返回结果   │ <──  │  解析响应    │  <── │ 容错处理       │ <──  │  发送请求     │
+ *  │ (收件回执) │      │ (拆开回信)   │      │ (挂失重寄)     │      │ (寄出快递)    │
  *  └──────────┘      └─────────────┘      └──────────────┘      └──────────────┘
  * </pre>
+ *
+ * <h3>熔断保护机制：</h3>
+ * <pre>
+ *  ┌──────────┐      ┌─────────────┐      ┌──────────────┐
+ *  │ 发送请求   │ ──> │ 熔断器检查    │ ──> │ CLOSED：放行   │
+ *  │           │      │ (电路保险丝) │      │ OPEN：拒绝   │
+ *  │           │      │             │      │ HALF_OPEN：试探 │
+ *  └──────────┘      └─────────────┘      └──────────────┘
+ * </pre>
+ *
+ * <p>同时支持同步（{@link #invoke}）和异步（{@link #invokeAsync}）两种调用模式。
+ *
+ * <p>这个类是 RPC 框架中的"代理人"，负责处理远程方法调用。</p>
+ * <p>InvocationHandler 是 JDK 动态代理机制中的一个接口，它定义了代理对象必须实现的 invoke 方法，该方法在代理对象上调用任何方法时都会被调用。</p>
  *
  * @author HGL
  * @since 2025/8/29 17:08
  */
 @Slf4j
 public class ServiceProxy implements InvocationHandler {
+
+    /**
+     * 全局熔断器实例 —— “整个客户端的电路保险丝”
+     *
+     * <p>当某个服务节点连续失败达到阈值时，熔断器自动打开，
+     * 后续请求快速失败，避免对已不可用的服务持续发起无意义的调用。
+     * 当配置的 circuitBreakerEnabled=false 时，熔断器不会被创建，相关逻辑会被跳过。
+     */
+    private volatile CircuitBreaker circuitBreaker;
 
     /**
      * 代理调用的核心入口——所有远程方法调用都从这里经过。
@@ -95,6 +121,46 @@ public class ServiceProxy implements InvocationHandler {
         // ======================== 第五步：拆开回信 ========================
         // 从响应报文中取出实际的数据，交还给调用方
         return rpcResponse.getData();
+    }
+
+    /**
+     * 异步调用远程方法 —— "寄出快递后拿到取件码，不必原地等"
+     *
+     * <p>与 {@link #invoke} 相同的流程，但以异步方式返回结果。
+     * 适合对延迟不敏感、或需要并发发起多个调用的场景。</p>
+     *
+     * <p>典型用法：
+     * <pre>
+     *   CompletableFuture&lt;Object&gt; future = serviceProxy.invokeAsync(proxy, method, args);
+     *   future.thenAccept(result -&gt; {
+     *       // 异步处理结果，不阻塞当前线程
+     *       System.out.println("远程调用结果：" + result);
+     *   });
+     * </pre>
+     *
+     * <p>流程：构造请求 → 服务发现 → 负载均衡 → 异步发送请求 → CompletableFuture 返回
+     *
+     * @param proxy  代理对象
+     * @param method 被调用的方法
+     * @param args   方法参数
+     * @return 包含调用结果的 CompletableFuture（调用方可通过 thenAccept/thenApply 等回调链式处理）
+     */
+    public CompletableFuture<Object> invokeAsync(Object proxy, Method method, Object[] args) {
+        // 第一步：构造 RPC 请求报文
+        RpcRequest rpcRequest = buildRpcRequest(method, args);
+
+        // 第二步：从注册中心发现可用服务节点
+        RpcConfig rpcConfig = RpcApplication.getRpcConfig();
+        List<ServiceMetaInfo> serviceMetaInfoList = getServiceMetaInfoList(rpcRequest, rpcConfig);
+
+        // 第三步：负载均衡选择目标节点
+        ServiceMetaInfo selectedServiceMetaInfo = loadBalanceSelect(rpcRequest, rpcConfig, serviceMetaInfoList);
+
+        // 第四步：异步发送请求，返回 CompletableFuture
+        // thenApply 在响应到达后自动提取 data 字段，调用方可继续链式处理
+        return VertxClientFactory.getInstance(rpcConfig.getProtocol())
+                .doRequestAsync(rpcRequest, selectedServiceMetaInfo)
+                .thenApply(RpcResponse::getData);
     }
 
     /**
@@ -186,10 +252,17 @@ public class ServiceProxy implements InvocationHandler {
      *
      * <p>重试与容错的关系：</p>
      * <pre>
-     *   发送请求 ──失败──> 重试1 ──失败──> 重试2 ──失败──> 容错处理
+     *   发送请求  ──失败  ──>  重试1 ── 失败 ──>重试2 ── 失败──>容错处理
      *      │                  │              │              │
      *      v                  v              v              v
      *   成功就返回          成功就返回      成功就返回     降级/切换节点/抛异常
+     * </pre>
+     *
+     * <p>如果配置了熔断器（circuitBreakerEnabled=true），会在重试之前先检查熔断状态：
+     * <pre>
+     *   发送请求 → 熔断器检查 → CLOSED：放行重试 → 成功/失败
+     *                         → OPEN：直接拒绝（快速失败）
+     *                         → HALF_OPEN：试探性放行一次
      * </pre>
      *
      * @param rpcRequest               RPC 请求
@@ -200,23 +273,86 @@ public class ServiceProxy implements InvocationHandler {
      */
     private RpcResponse sendRequestWithRetry(RpcRequest rpcRequest, RpcConfig rpcConfig, ServiceMetaInfo selectedServiceMetaInfo, List<ServiceMetaInfo> serviceMetaInfoList) {
         try {
-            // 获取重试策略实例（如固定间隔重试、指数退避重试等）
-            RetryStrategy retryStrategy = RetryStrategyFactory.getInstance(rpcConfig.getRetryStrategy());
-
-            // 把发送请求的动作包装成"可重试"的任务，交给重试策略去执行
-            return retryStrategy.doRetry(() -> {
-                try {
-                    // 通过网络客户端（TCP/HTTP）把请求发出去
-                    // 就像把信件交给快递公司，至于走公路还是铁路由协议决定
-                    return VertxClientFactory.getInstance(rpcConfig.getProtocol()).doRequest(rpcRequest, selectedServiceMetaInfo);
-                } catch (Throwable e) {
-                    throw new RuntimeException("发送请求失败：" + e.getMessage());
-                }
-            });
+            // 如果启用了熔断器，先经过熔断器保护（避免对已不可用的服务持续发起无意义的调用）
+            if (rpcConfig.isCircuitBreakerEnabled()) {
+                return executeWithCircuitBreaker(rpcRequest, rpcConfig, selectedServiceMetaInfo);
+            }
+            // 未启用熔断器，直接执行带重试的调用
+            return doRetry(rpcRequest, rpcConfig, selectedServiceMetaInfo);
         } catch (Exception e) {
             // 重试全部失败了，启动容错机制——换个方案继续尝试
             return handleTolerance(rpcRequest, rpcConfig, selectedServiceMetaInfo, serviceMetaInfoList, e);
         }
+    }
+
+    /**
+     * 通过熔断器执行带重试的调用 —— "经过电路保险丝的 RPC 调用"
+     *
+     * <p>使用双重检查锁（DCL）懒初始化熔断器实例：
+     * 首次调用时才根据 RpcConfig 配置创建熔断器，之后直接复用。</p>
+     *
+     * <p>熔断器内部包裹了 {@link #doRetry} 调用，即：
+     * <pre>
+     *   熔断器.execute(() -&gt; 重试策略.doRetry(() -&gt; 实际发送请求))
+     * </pre>
+     * 如果熔断器处于 OPEN 状态，直接抛出异常，不会执行内部的重试和发送逻辑。</p>
+     *
+     * @param rpcRequest              RPC 请求
+     * @param rpcConfig               RPC 配置（包含熔断器参数）
+     * @param selectedServiceMetaInfo 当前选中的服务节点
+     * @return RPC 响应
+     * @throws Exception 熔断器打开时抛出 RuntimeException，或内部重试失败时抛出原始异常
+     */
+    private RpcResponse executeWithCircuitBreaker(RpcRequest rpcRequest, RpcConfig rpcConfig, ServiceMetaInfo selectedServiceMetaInfo) throws Exception {
+        // DCL 懒初始化熔断器（volatile + synchronized + 双重 null 检查）
+        if (circuitBreaker == null) {
+            synchronized (this) {
+                if (circuitBreaker == null) {
+                    // 根据配置创建熔断器：失败阈值、打开超时、半开恢复需连续成功 2 次
+                    circuitBreaker = new DefaultCircuitBreaker(
+                            rpcConfig.getCircuitBreakerFailureThreshold(),
+                            rpcConfig.getCircuitBreakerOpenTimeoutMs(),
+                            2
+                    );
+                }
+            }
+        }
+        // 将带重试的调用作为整体交给熔断器包裹
+        return circuitBreaker.execute(() -> doRetry(rpcRequest, rpcConfig, selectedServiceMetaInfo));
+    }
+
+    /**
+     * 执行带重试的发送请求 —— "寄信，丢了就再寄"
+     *
+     * <p>从 SPI 获取配置的重试策略实例，将实际发送请求的动作包装成
+     * {@link java.util.concurrent.Callable} 交给重试策略执行。</p>
+     *
+     * <p>重试策略内部会决定：
+     * <ul>
+     *   <li>是否重试（NoRetryStrategy 不重试，FixedIntervalRetryStrategy 重试 3 次）</li>
+     *   <li>重试间隔（固定间隔 / 指数退避等）</li>
+     *   <li>何时放弃（达到最大次数后抛出异常）</li>
+     * </ul>
+     *
+     * @param rpcRequest              RPC 请求
+     * @param rpcConfig               RPC 配置（用于获取重试策略和网络协议类型）
+     * @param selectedServiceMetaInfo 目标服务节点
+     * @return RPC 响应
+     * @throws Exception 所有重试都失败后抛出异常
+     */
+    private RpcResponse doRetry(RpcRequest rpcRequest, RpcConfig rpcConfig, ServiceMetaInfo selectedServiceMetaInfo) throws Exception {
+        // 从 SPI 获取重试策略实例（如 NoRetryStrategy、FixedIntervalRetryStrategy）
+        RetryStrategy retryStrategy = RetryStrategyFactory.getInstance(rpcConfig.getRetryStrategy());
+
+        // 将发送请求的动作包装成 Callable，交给重试策略执行
+        return retryStrategy.doRetry(() -> {
+            try {
+                // 通过网络客户端（TCP/HTTP）把请求发出去
+                return VertxClientFactory.getInstance(rpcConfig.getProtocol()).doRequest(rpcRequest, selectedServiceMetaInfo);
+            } catch (Throwable e) {
+                throw new RuntimeException("发送请求失败：" + e.getMessage());
+            }
+        });
     }
 
     /**

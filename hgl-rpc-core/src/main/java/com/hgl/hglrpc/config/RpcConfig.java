@@ -41,6 +41,9 @@ import lombok.Data;
  *   tolerantStrategy   fail_fast     容错策略
  *   requestTimeout     10000         请求超时时间（毫秒）
  *   registryConfig     -             注册中心配置（见 RegistryConfig）
+ *   circuitBreakerEnabled false      是否启用熔断器
+ *   circuitBreakerFailureThreshold 5  熔断器失败阈值
+ *   circuitBreakerOpenTimeoutMs  30000  熔断器打开超时（毫秒）
  * </pre>
  *
  * @Author HGL
@@ -87,4 +90,48 @@ public class RpcConfig {
 
     /** RPC 请求超时时间（毫秒），超时后抛出 TimeoutException */
     private Long requestTimeout = 10000L;
+
+    /**
+     * 是否启用熔断器 —— “电路保险丝的总开关”
+     *
+     * <p>默认关闭（false）。开启后，ServiceProxy 会在每次调用时经过熔断器保护：
+     * <pre>
+     *   调用流程：
+     *   发送请求 → 熔断器检查 → 重试 → 容错
+     *                    │
+     *         ┌──── CLOSED：放行
+     *         ├── OPEN：直接拒绝（快速失败，保护客户端资源）
+     *         └── HALF_OPEN：试探性放行一次
+     * </pre>
+     *
+     * <p>适用场景：当下游服务已明确不可用时，避免客户端持续发起无意义的调用，
+     * 给服务端恢复时间，防止级联故障扩散。
+     *
+     * @see com.hgl.hglrpc.fault.circuitbreaker.DefaultCircuitBreaker
+     */
+    private boolean circuitBreakerEnabled = false;
+
+    /**
+     * 熔断器失败阈值 —— “连续失败多少次后触发熔断”
+     *
+     * <p>默认值 5。当连续失败次数达到此阈值时，熔断器从 CLOSED 转为 OPEN。
+     * 建议根据业务场景调整：
+     * <ul>
+     *   <li>核心服务（支付、订单）：3-5 次（快速熔断，避免雪崩）</li>
+     *   <li>非核心服务（日志、埋点）：10+ 次（容忍更多抖动）</li>
+     * </ul>
+     */
+    private int circuitBreakerFailureThreshold = 5;
+
+    /**
+     * 熔断器打开超时时间（毫秒） —— “熔断多久后尝试恢复”
+     *
+     * <p>默认值 30000（30秒）。熔断器处于 OPEN 状态超过此时间后，
+     * 自动转为 HALF_OPEN 状态，允许一次试探性调用：
+     * <ul>
+     *   <li>试探成功：熔断器恢复为 CLOSED，正常放行</li>
+     *   <li>试探失败：重新进入 OPEN，再等 30 秒</li>
+     * </ul>
+     */
+    private long circuitBreakerOpenTimeoutMs = 30000L;
 }

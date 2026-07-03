@@ -37,7 +37,7 @@ public class RegistryConfig {
     /**
      * 注册中心连接地址
      *
-     * <p>Etcd 示例："http://192.168.6.128:2379"
+     * <p>Etcd 示例："<a href="http://192.168.6.128:2379">...</a>"
      * ZooKeeper 示例："192.168.6.128:2181"
      */
     private String address = "http://192.168.6.128:2379";

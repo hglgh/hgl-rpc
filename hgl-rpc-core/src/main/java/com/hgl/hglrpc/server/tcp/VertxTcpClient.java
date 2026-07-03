@@ -35,18 +35,18 @@ import java.util.concurrent.TimeoutException;
  *
  * <pre>
  *   ┌─────────────────────────────────────────────────────────────────────────┐
- *   │                      VertxTcpClient 的架构                              │
+ *   │                      VertxTcpClient 的架构                               │
  *   │                                                                         │
  *   │   ┌─────────────────────────────────────────────────────────────────┐   │
- *   │   │  单例 Vertx 实例（整个 JVM 只有一个事件循环线程池）              │   │
+ *   │   │  单例 Vertx 实例（整个 JVM 只有一个事件循环线程池）                     │   │
  *   │   │      │                                                          │   │
- *   │   │      ├── NetClient（TCP 客户端，负责建立连接）                    │   │
+ *   │   │      ├── NetClient（TCP 客户端，负责建立连接）                       │   │
  *   │   │      │                                                          │   │
- *   │   │      └── 连接池 CONNECTION_POOL                                 │   │
+ *   │   │      └── 连接池 CONNECTION_POOL                                  │   │
  *   │   │          ┌──────────────────────────────────────────────────┐   │   │
- *   │   │          │ "192.168.1.1:8080" ──▶ NetSocket A              │   │   │
- *   │   │          │ "192.168.1.2:8081" ──▶ NetSocket B              │   │   │
- *   │   │          │ "192.168.1.3:8082" ──▶ NetSocket C              │   │   │
+ *   │   │          │ "192.168.1.1:8080" ──▶ NetSocket A               │   │   │
+ *   │   │          │ "192.168.1.2:8081" ──▶ NetSocket B               │   │   │
+ *   │   │          │ "192.168.1.3:8082" ──▶ NetSocket C               │   │   │
  *   │   │          └──────────────────────────────────────────────────┘   │   │
  *   │   └─────────────────────────────────────────────────────────────────┘   │
  *   └─────────────────────────────────────────────────────────────────────────┘
@@ -55,18 +55,18 @@ import java.util.concurrent.TimeoutException;
  * <p>为什么 Vertx 和 NetClient 必须是单例？
  * <pre>
  *   ╔═══════════════════════════════════════════════════════════════════╗
- *   ║  Vertx.vertx() 每次调用都会创建：                                ║
- *   ║    - 一组事件循环线程（默认 = CPU 核心数 * 2）                    ║
- *   ║    - 一组工作线程池                                              ║
- *   ║    - Netty 的 EventLoopGroup                                     ║
+ *   ║  Vertx.vertx() 每次调用都会创建：                                     ║
+ *   ║    - 一组事件循环线程（默认 = CPU 核心数 * 2）                          ║
+ *   ║    - 一组工作线程池                                                  ║
+ *   ║    - Netty 的 EventLoopGroup                                       ║
  *   ║                                                                   ║
- *   ║  如果每次 RPC 调用都 Vertx.vertx()：                             ║
- *   ║    第1次请求 → 创建 16 个线程                                     ║
- *   ║    第2次请求 → 又创建 16 个线程                                   ║
- *   ║    第100次请求 → 1600 个线程在竞争 CPU！                          ║
- *   ║    结果：线程爆炸、GC 疯狂、延迟飙升                             ║
+ *   ║  如果每次 RPC 调用都 Vertx.vertx()：                                  ║
+ *   ║    第1次请求 → 创建 16 个线程                                         ║
+ *   ║    第2次请求 → 又创建 16 个线程                                        ║
+ *   ║    第100次请求 → 1600 个线程在竞争 CPU！                               ║
+ *   ║    结果：线程爆炸、GC 疯狂、延迟飙升                                    ║
  *   ║                                                                   ║
- *   ║  单例模式：整个 JVM 只需要一套事件循环线程池，复用即可。          ║
+ *   ║  单例模式：整个 JVM 只需要一套事件循环线程池，复用即可。                    ║
  *   ╚═══════════════════════════════════════════════════════════════════╝
  * </pre>
  *
@@ -142,7 +142,6 @@ public class VertxTcpClient implements VertxClient {
      * @throws ExecutionException   执行异常（网络错误、服务端报错等）
      */
     @Override
-    @SuppressWarnings("unchecked")
     public RpcResponse doRequest(RpcRequest rpcRequest, ServiceMetaInfo serviceMetaInfo) throws InterruptedException, ExecutionException {
         // 拼接收件地址 —— "XX市XX区XX路XX号"
         String address = serviceMetaInfo.getServiceHost() + ":" + serviceMetaInfo.getServicePort();
@@ -153,11 +152,10 @@ public class VertxTcpClient implements VertxClient {
 
         // 从连接池获取或创建连接，然后发送请求
         // thenAccept 表示"连接就绪后，立即发送 RPC 请求"
-        getOrCreateConnection(address, serviceMetaInfo, responseFuture, rpcRequest)
-                .thenAccept(socket -> {
-                    // 连接就绪后发送请求 —— 快递员到达目的地，开始送件
-                    sendRpcRequest(socket, rpcRequest, responseFuture);
-                });
+        getOrCreateConnection(address, serviceMetaInfo, responseFuture, rpcRequest).thenAccept(socket -> {
+            // 连接就绪后发送请求 —— 快递员到达目的地，开始送件
+            sendRpcRequest(socket, rpcRequest, responseFuture);
+        });
 
         // 带超时的等待响应 —— 设定"最迟几点回来"的 deadline
         long timeout = RpcApplication.getRpcConfig().getRequestTimeout();
@@ -187,9 +185,7 @@ public class VertxTcpClient implements VertxClient {
      * @param rpcRequest      请求参数（当前未使用，保留用于未来扩展）
      * @return 包含 NetSocket 的 CompletableFuture
      */
-    private CompletableFuture<NetSocket> getOrCreateConnection(String address, ServiceMetaInfo serviceMetaInfo,
-                                                                CompletableFuture<RpcResponse> responseFuture,
-                                                                RpcRequest rpcRequest) {
+    private CompletableFuture<NetSocket> getOrCreateConnection(String address, ServiceMetaInfo serviceMetaInfo, CompletableFuture<RpcResponse> responseFuture, RpcRequest rpcRequest) {
         CompletableFuture<NetSocket> socketFuture = new CompletableFuture<>();
 
         // 先从池中取 —— "看看有没有熟路的快递员可用"
@@ -203,8 +199,7 @@ public class VertxTcpClient implements VertxClient {
         NET_CLIENT.connect(serviceMetaInfo.getServicePort(), serviceMetaInfo.getServiceHost(), result -> {
             if (!result.succeeded()) {
                 // 连接失败 —— 快递员出门就摔了一跤，通知调用方
-                responseFuture.completeExceptionally(
-                        new RuntimeException("Failed to connect to TCP server: " + result.cause().getMessage()));
+                responseFuture.completeExceptionally(new RuntimeException("Failed to connect to TCP server: " + result.cause().getMessage()));
                 return;
             }
             NetSocket socket = result.result();
@@ -233,21 +228,22 @@ public class VertxTcpClient implements VertxClient {
      *   │                 ProtocolMessage 信封                  │
      *   │                                                      │
      *   │  Header（快递单）：                                    │
-     *   │    magic     = 0x1   （防伪标识）                     │
-     *   │    version   = 0x1   （协议版本）                     │
-     *   │    serializer = 配置值 （JDK/JSON/Kryo/Hessian）      │
-     *   │    type      = REQUEST （这是请求，不是响应）         │
-     *   │    requestId = 雪花ID （唯一的快递单号）              │
+     *   │    magic     = 0x1   （防伪标识）                      │
+     *   │    version   = 0x1   （协议版本）                      │
+     *   │    serializer = 配置值 （JDK/JSON/Kryo/Hessian）       │
+     *   │    type      = REQUEST （这是请求，不是响应）            │
+     *   │    requestId = 雪花ID （唯一的快递单号）                 │
      *   │                                                      │
-     *   │  Body（包裹内容）：                                    │
-     *   │    RpcRequest（服务名、方法名、参数...）              │
+     *   │  Body（包裹内容）：                                     │
+     *   │    RpcRequest（服务名、方法名、参数...）                  │
      *   └──────────────────────────────────────────────────────┘
      * </pre>
      *
-     * @param socket          已建立的 TCP 连接
-     * @param rpcRequest      RPC 请求参数
-     * @param responseFuture  用于接收响应的 CompletableFuture
+     * @param socket         已建立的 TCP 连接
+     * @param rpcRequest     RPC 请求参数
+     * @param responseFuture 用于接收响应的 CompletableFuture
      */
+    @SuppressWarnings("unchecked")
     private void sendRpcRequest(NetSocket socket, RpcRequest rpcRequest, CompletableFuture<RpcResponse> responseFuture) {
         // ========== 组装协议消息 ==========
         ProtocolMessage<RpcRequest> protocolMessage = new ProtocolMessage<>();
@@ -256,9 +252,7 @@ public class VertxTcpClient implements VertxClient {
         // 填写"快递单"的各个字段
         header.setMagic(ProtocolConstant.PROTOCOL_MAGIC);         // 防伪标识
         header.setVersion(ProtocolConstant.PROTOCOL_VERSION);     // 协议版本
-        header.setSerializer(Objects.requireNonNull(
-                ProtocolMessageSerializerEnum.getEnumByValue(
-                        RpcApplication.getRpcConfig().getSerializer())).getKey());  // 序列化方式
+        header.setSerializer(Objects.requireNonNull(ProtocolMessageSerializerEnum.getEnumByValue(RpcApplication.getRpcConfig().getSerializer())).getKey());  // 序列化方式
         header.setType(ProtocolMessageTypeEnum.REQUEST.getKey()); // 消息类型：请求
         header.setRequestId(IdUtil.getSnowflakeNextId());         // 雪花算法生成唯一单号
         protocolMessage.setHeader(header);
@@ -270,14 +264,11 @@ public class VertxTcpClient implements VertxClient {
 
         // ========== 注册响应处理器 —— "等签收回执" ==========
         // 用 TcpBufferHandlerWrapper 包装，确保收到完整响应后才处理
-        TcpBufferHandlerWrapper bufferHandlerWrapper = new TcpBufferHandlerWrapper(
-                buffer -> {
-                    // 收到完整响应，解码并完成 Future
-                    ProtocolMessage<RpcResponse> rpcResponseProtocolMessage =
-                            (ProtocolMessage<RpcResponse>) ProtocolMessageDecoder.decode(buffer);
-                    responseFuture.complete(rpcResponseProtocolMessage.getBody());
-                }
-        );
+        TcpBufferHandlerWrapper bufferHandlerWrapper = new TcpBufferHandlerWrapper(buffer -> {
+            // 收到完整响应，解码并完成 Future
+            ProtocolMessage<RpcResponse> rpcResponseProtocolMessage = (ProtocolMessage<RpcResponse>) ProtocolMessageDecoder.decode(buffer);
+            responseFuture.complete(rpcResponseProtocolMessage.getBody());
+        });
         socket.handler(bufferHandlerWrapper);
     }
 }

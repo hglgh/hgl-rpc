@@ -4,6 +4,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import com.hgl.example.common.model.User;
 import com.hgl.example.common.service.UserService;
+import com.hgl.example.consumer.EasyConsumerExample;
 import com.hgl.hglrpc.model.RpcRequest;
 import com.hgl.hglrpc.model.RpcResponse;
 import com.hgl.hglrpc.serializer.JdkSerializer;
@@ -42,13 +43,13 @@ import lombok.extern.slf4j.Slf4j;
  *   │    body = byte[] (序列化后的请求)                      │
  *   └─────────────────┬───────────────────────────────────┘
  *                     │                         ┌──────────────────┐
- *                     └───────────────────────▶ │   提供者处理请求   │
+ *                     └───────────────────────▶ │   提供者处理请求    │
  *                                               │   返回 byte[]     │
  *                                               └────────┬─────────┘
  *                                                        │
- *   ┌─────────────────────────────────────────────────────┘
- *   │ 4. 反序列化响应
- *   │    byte[] → RpcResponse → User
+ *   ┌────────────────────────────────────────────────────┘┐
+ *   │ 4. 反序列化响应                                       │
+ *   │    byte[] → RpcResponse → User                      │
  *   └─────────────────┬───────────────────────────────────┘
  *                     │
  *                     ▼
