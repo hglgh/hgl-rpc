@@ -23,55 +23,65 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
- * @ClassName: ZooKeeperRegistry
- * @Package: com.hgl.hglrpc.registry
- * @Description: zookeeper 注册中心
+ * ZooKeeper 注册中心实现 —— "基于树形结构的电话簿"
+ *
+ * <p>ZooKeeper 是 Apache 的分布式协调服务，内部是一棵"文件树"（ZNode Tree）。
+ * 它用"临时节点"（Ephemeral Node）实现服务注册：
+ * 服务提供者创建临时节点，连接断开后节点自动删除——无需手动续期。
+ *
+ * <p>与 Etcd 的对比：
+ * <pre>
+ *   特性            Etcd                    ZooKeeper
+ *   ────────────    ──────────────────      ──────────────────
+ *   数据结构        KV 存储                  树形 ZNode
+ *   心跳机制        Lease + keepAlive       临时节点（自动删除）
+ *   监听机制        Watch                   CuratorCache
+ *   适用场景        K8s、云原生              Hadoop 生态
+ *   客户端          jetcd                   Apache Curator
+ * </pre>
+ *
+ * <p>使用 Apache Curator 封装 ZooKeeper 操作（比原生 ZK API 更易用）。
+ * Curator 的 ServiceDiscovery 提供了开箱即用的服务注册/发现能力。
+ *
  * @Author HGL
  * @Create: 2025/9/3 11:10
  */
 @Slf4j
 public class ZooKeeperRegistry implements Registry {
 
-    /**
-     * 根节点
-     */
+    /** ZooKeeper 中的根路径 */
     private static final String ZK_ROOT_PATH = "/rpc/zk";
 
+    /** Curator 客户端 */
     private CuratorFramework client;
 
+    /** 服务发现客户端（Curator 封装的高级 API） */
     private ServiceDiscovery<ServiceMetaInfo> serviceDiscovery;
 
-    /**
-     * 本机注册的节点 key 集合（用于维护续期）
-     */
+    /** 本机注册的节点 key 集合 */
     private final Set<String> localRegisterNodeKeySet = new HashSet<>();
 
-    /**
-     * 注册中心服务缓存
-     */
+    /** 服务发现结果缓存 */
     private final RegistryServiceMultiCache registryServiceMultiCache = new RegistryServiceMultiCache();
 
-    /**
-     * 正在监听的 key 集合
-     */
+    /** 正在监听的 key 集合（去重） */
     private final Set<String> watchingKeySet = new ConcurrentHashSet<>();
 
     @Override
     public void init(RegistryConfig registryConfig) {
-        // 构建 client 实例
+        // 创建 Curator 客户端（带指数退避重试策略）
         client = CuratorFrameworkFactory.builder()
                 .connectString(registryConfig.getAddress())
                 .retryPolicy(new ExponentialBackoffRetry(registryConfig.getTimeout().intValue(), 3))
                 .build();
 
-        // 构建 serviceDiscovery 实例
+        // 创建 ServiceDiscovery（Curator 的服务发现工具）
         serviceDiscovery = ServiceDiscoveryBuilder.builder(ServiceMetaInfo.class)
                 .client(client)
                 .basePath(ZK_ROOT_PATH)
                 .serializer(new JsonInstanceSerializer<>(ServiceMetaInfo.class))
                 .build();
 
-        // 启动 client 和 serviceDiscovery
         try {
             client.start();
             serviceDiscovery.start();
@@ -82,10 +92,9 @@ public class ZooKeeperRegistry implements Registry {
 
     @Override
     public void register(ServiceMetaInfo serviceMetaInfo) throws Exception {
-        // 注册到 zk 里
+        // 注册服务实例到 ZK（创建临时节点）
         serviceDiscovery.registerService(buildServiceInstance(serviceMetaInfo));
-
-        // 添加节点信息到本地缓存
+        // 记录到本地缓存
         String registerKey = String.format("%s/%s", ZK_ROOT_PATH, serviceMetaInfo.getServiceNodeKey());
         localRegisterNodeKeySet.add(registerKey);
     }
@@ -93,32 +102,31 @@ public class ZooKeeperRegistry implements Registry {
     @Override
     public void unRegister(ServiceMetaInfo serviceMetaInfo) {
         try {
+            // 从 ZK 注销服务实例
             serviceDiscovery.unregisterService(buildServiceInstance(serviceMetaInfo));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        // 从本地缓存移除
         String registerKey = String.format("%s/%s", ZK_ROOT_PATH, serviceMetaInfo.getServiceNodeKey());
         localRegisterNodeKeySet.remove(registerKey);
-
     }
 
     @Override
     public List<ServiceMetaInfo> serviceDiscovery(String serviceKey) {
-        // 优先从缓存获取服务
+        // 优先从缓存获取
         List<ServiceMetaInfo> serviceMetaInfoList = registryServiceMultiCache.readCache(serviceKey);
         if (CollUtil.isNotEmpty(serviceMetaInfoList)) {
             return serviceMetaInfoList;
         }
         try {
-            // 查询服务信息
+            // 从 ZK 查询服务实例列表
             Collection<ServiceInstance<ServiceMetaInfo>> serviceInstanceList = serviceDiscovery.queryForInstances(serviceKey);
-            // 解析服务信息
             serviceMetaInfoList = serviceInstanceList.stream()
                     .map(ServiceInstance::getPayload)
                     .collect(Collectors.toList());
-            // 写入服务缓存
-            serviceMetaInfoList.forEach(serviceMetaInfo -> registryServiceMultiCache.writeCache(serviceKey, serviceMetaInfo.getServiceNodeKey(), serviceMetaInfo));
+            // 写入缓存
+            serviceMetaInfoList.forEach(serviceMetaInfo ->
+                    registryServiceMultiCache.writeCache(serviceKey, serviceMetaInfo.getServiceNodeKey(), serviceMetaInfo));
             return serviceMetaInfoList;
         } catch (Exception e) {
             throw new RuntimeException("获取服务列表失败", e);
@@ -127,7 +135,7 @@ public class ZooKeeperRegistry implements Registry {
 
     @Override
     public void heartBeat() {
-        // 不需要心跳机制，建立了临时节点，如果服务器故障，则临时节点直接丢失
+        // ZooKeeper 使用临时节点，连接断开自动删除，无需手动心跳续期
     }
 
     @Override
@@ -135,10 +143,13 @@ public class ZooKeeperRegistry implements Registry {
         String watchKey = String.format("%s/%s", ZK_ROOT_PATH, serviceNodeKey);
         boolean newWatch = watchingKeySet.add(watchKey);
         if (newWatch) {
+            // 使用 CuratorCache 监听节点变化
             CuratorCache curatorCache = CuratorCache.build(client, watchKey);
             curatorCache.start();
             curatorCache.listenable().addListener(CuratorCacheListener.builder()
+                    // 节点被删除时清除缓存
                     .forDeletes(childData -> registryServiceMultiCache.clearCache(serviceKey, serviceNodeKey))
+                    // 节点内容变化时也清除缓存
                     .forChanges((oldData, newData) -> registryServiceMultiCache.clearCache(serviceKey, serviceNodeKey))
                     .build());
         }
@@ -147,7 +158,7 @@ public class ZooKeeperRegistry implements Registry {
     @Override
     public void destroy() {
         log.info("当前节点下线");
-        // 下线节点（这一步可以不做，因为都是临时节点，服务下线，自然就被删掉了）
+        // 删除本节点（临时节点在连接关闭后会自动删除，这里主动删除更优雅）
         for (String key : localRegisterNodeKeySet) {
             try {
                 client.delete().guaranteed().forPath(key);
@@ -155,14 +166,18 @@ public class ZooKeeperRegistry implements Registry {
                 throw new RuntimeException(key + "下线失败", e);
             }
         }
-        // 清空本地缓存
         localRegisterNodeKeySet.clear();
-        // 释放资源
         if (client != null) {
             client.close();
         }
     }
 
+    /**
+     * 构建 ZK ServiceInstance 对象
+     *
+     * @param serviceMetaInfo 服务元信息
+     * @return Curator 的 ServiceInstance 对象
+     */
     private ServiceInstance<ServiceMetaInfo> buildServiceInstance(ServiceMetaInfo serviceMetaInfo) {
         String serviceAddress = String.format("%s:%s", serviceMetaInfo.getServiceHost(), serviceMetaInfo.getServicePort());
         try {
