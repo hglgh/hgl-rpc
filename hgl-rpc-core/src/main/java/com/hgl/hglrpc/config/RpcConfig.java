@@ -16,13 +16,13 @@ import lombok.Data;
  *
  * <p>配置加载流程：
  * <pre>
- *   application.yml                    RpcConfig 对象
- *   ┌──────────────────┐              ┌──────────────────┐
+ *   application.yml                     RpcConfig 对象
+ *   ┌──────────────────┐               ┌──────────────────┐
  *   │ rpc:              │  ConfigUtils │                  │
- *   │   name: my-rpc    │ ──────────→ │ name = "my-rpc"  │
+ *   │   name: my-rpc    │ ──────────→  │ name = "my-rpc"  │
  *   │   serializer: kryo│  .loadConfig │ serializer = "kryo"│
  *   │   ...             │              │ ...              │
- *   └──────────────────┘              └──────────────────┘
+ *   └──────────────────┘               └──────────────────┘
  * </pre>
  *
  * <p>配置项速查表：

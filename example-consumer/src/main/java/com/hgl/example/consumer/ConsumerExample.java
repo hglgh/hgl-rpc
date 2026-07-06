@@ -13,15 +13,15 @@ import com.hgl.hglrpc.proxy.ServiceProxyFactory;
  *   ┌────────────────────────────────────────────────────────────┐
  *   │                    ConsumerExample                         │
  *   │                                                            │
- *   │  1. ConsumerBootstrap.init() 初始化（连接注册中心）           │
+ *   │  1. ConsumerBootstrap.init() 初始化（连接注册中心）            │
  *   │          ↓                                                 │
- *   │  2. ServiceProxyFactory.getProxy() 获取代理对象             │
+ *   │  2. ServiceProxyFactory.getProxy() 获取代理对象              │
  *   │          ↓                                                 │
- *   │  3. 像调用本地方法一样调用远程服务                             │
+ *   │  3. 像调用本地方法一样调用远程服务                               │
  *   │     userService.getUser(user)                              │
  *   │          ↓                                                 │
- *   │  4. 代理偷偷帮你完成：                                       │
- *   │     序列化 → 发送网络请求 → 等待响应 → 反序列化 → 返回结果    │
+ *   │  4. 代理偷偷帮你完成：                                         │
+ *   │     序列化 → 发送网络请求 → 等待响应 → 反序列化 → 返回结果          │
  *   └────────────────────────────────────────────────────────────┘
  * </pre>
  * </p>

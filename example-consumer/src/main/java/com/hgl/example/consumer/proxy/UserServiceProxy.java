@@ -25,16 +25,16 @@ import lombok.extern.slf4j.Slf4j;
  *          ▼
  *   ┌─────────────────────────────────────────────────────┐
  *   │ 1. 组装 RpcRequest                                   │
- *   │    - serviceName: "UserService"                       │
- *   │    - methodName: "getUser"                            │
- *   │    - parameterTypes: [User.class]                     │
- *   │    - args: [user]                                     │
+ *   │    - serviceName: "UserService"                     │
+ *   │    - methodName: "getUser"                          │
+ *   │    - parameterTypes: [User.class]                   │
+ *   │    - args: [user]                                   │
  *   └─────────────────┬───────────────────────────────────┘
  *                     │
  *                     ▼
  *   ┌─────────────────────────────────────────────────────┐
  *   │ 2. JdkSerializer 序列化                              │
- *   │    RpcRequest → byte[]                               │
+ *   │    RpcRequest → byte[]                              │
  *   └─────────────────┬───────────────────────────────────┘
  *                     │
  *                     ▼
@@ -48,7 +48,7 @@ import lombok.extern.slf4j.Slf4j;
  *                                               └────────┬─────────┘
  *                                                        │
  *   ┌────────────────────────────────────────────────────┘┐
- *   │ 4. 反序列化响应                                       │
+ *   │ 4. 反序列化响应                                        │
  *   │    byte[] → RpcResponse → User                      │
  *   └─────────────────┬───────────────────────────────────┘
  *                     │

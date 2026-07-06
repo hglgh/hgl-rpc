@@ -27,33 +27,33 @@ import java.lang.reflect.Method;
  * <p>HTTP 版的派件流程：
  * <pre>
  *   ┌────────────────────────────────────────────────────────────────────────┐
- *   │                    HTTP 快递员的派件流程                                │
+ *   │                    HTTP 快递员的派件流程                                  │
  *   │                                                                        │
- *   │  客户端 ──── HTTP POST ────▶ HttpServerRequest                        │
+ *   │  客户端 ──── HTTP POST ────▶ HttpServerRequest                          │
  *   │                               │                                        │
  *   │                               ▼                                        │
  *   │                   request.bodyHandler(body -> { ... })                 │
- *   │                   （等请求体全部到达后再处理）                          │
+ *   │                   （等请求体全部到达后再处理）                               │
  *   │                               │                                        │
  *   │                               ▼                                        │
  *   │                   serializer.deserialize(body, RpcRequest.class)       │
- *   │                   （拆包裹：从 HTTP body 反序列化出 RpcRequest）        │
+ *   │                   （拆包裹：从 HTTP body 反序列化出 RpcRequest）            │
  *   │                               │                                        │
  *   │                               ▼                                        │
  *   │                   LocalRegistry.get(serviceName)                       │
- *   │                   （查快递柜：找到目标服务的实现类）                     │
+ *   │                   （查快递柜：找到目标服务的实现类）                          │
  *   │                               │                                        │
  *   │                               ▼                                        │
  *   │                   method.invoke(serviceInstance, args)                 │
- *   │                   （送货上门：通过反射调用目标方法）                     │
+ *   │                   （送货上门：通过反射调用目标方法）                          │
  *   │                               │                                        │
  *   │                               ▼                                        │
  *   │                   serializer.serialize(rpcResponse)                    │
- *   │                   （封装回信：序列化 RpcResponse）                      │
+ *   │                   （封装回信：序列化 RpcResponse）                         │
  *   │                               │                                        │
  *   │                               ▼                                        │
  *   │                   response.end(Buffer.buffer(serialized))              │
- *   │                   （发回签收单：HTTP 响应）                             │
+ *   │                   （发回签收单：HTTP 响应）                                │
  *   └────────────────────────────────────────────────────────────────────────┘
  * </pre>
  *

@@ -2,6 +2,7 @@ package com.hgl.hglrpc.server.http;
 
 import com.hgl.hglrpc.server.VertxServer;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -13,14 +14,14 @@ import lombok.extern.slf4j.Slf4j;
  * <p>与 {@link com.hgl.hglrpc.server.tcp.VertxTcpServer} 的区别：
  * <pre>
  *   ╔═══════════════════════════════════════════════════════════════════╗
- *   ║  对比维度          │  TCP 快递网点            │  HTTP 快递网点    ║
+ *   ║  对比维度          │  TCP 快递网点            │  HTTP 快递网点         ║
  *   ╠═══════════════════════════════════════════════════════════════════╣
- *   ║  协议层            │  TCP（传输层）           │  HTTP（应用层）   ║
- *   ║  数据格式          │  自定义二进制协议        │  HTTP Body        ║
- *   ║  粘包拆包          │  需要手动处理            │  HTTP 自带边界    ║
- *   ║  性能              │  更高（无协议开销）      │  稍低（HTTP 头）  ║
- *   ║  可调试性          │  需要专用工具            │  curl/浏览器即可  ║
- *   ║  适用场景          │  内网高性能通信          │  跨网/调试/兼容   ║
+ *   ║  协议层            │  TCP（传输层）           │  HTTP（应用层）        ║
+ *   ║  数据格式          │  自定义二进制协议         │  HTTP Body            ║
+ *   ║  粘包拆包          │  需要手动处理            │  HTTP 自带边界          ║
+ *   ║  性能             │  更高（无协议开销）       │  稍低（HTTP 头）        ║
+ *   ║  可调试性          │  需要专用工具            │  curl/浏览器即可        ║
+ *   ║  适用场景          │  内网高性能通信          │  跨网/调试/兼容          ║
  *   ╚═══════════════════════════════════════════════════════════════════╝
  * </pre>
  *
@@ -53,7 +54,7 @@ public class VertxHttpServer implements VertxServer {
         // 创建 HTTP 服务器 —— 挂上"HTTP 快递网点"的招牌
         // 注意：这里用 createHttpServer() 而非 createNetServer()
         // HTTP 服务器会自动解析 HTTP 协议，不需要手动处理粘包拆包
-        io.vertx.core.http.HttpServer httpServer = vertx.createHttpServer();
+        HttpServer httpServer = vertx.createHttpServer();
 
         // 注册请求处理器 —— 安排 HTTP 快递员（HttpServerHandler）上岗
         httpServer.requestHandler(new HttpServerHandler());

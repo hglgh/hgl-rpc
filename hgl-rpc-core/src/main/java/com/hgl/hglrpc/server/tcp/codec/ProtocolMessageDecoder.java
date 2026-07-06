@@ -8,6 +8,7 @@ import com.hgl.hglrpc.protocol.ProtocolMessageSerializerEnum;
 import com.hgl.hglrpc.protocol.ProtocolMessageTypeEnum;
 import com.hgl.hglrpc.serializer.Serializer;
 import com.hgl.hglrpc.serializer.SerializerFactory;
+import com.hgl.hglrpc.server.tcp.TcpBufferHandlerWrapper;
 import io.vertx.core.buffer.Buffer;
 
 /**
@@ -19,23 +20,23 @@ import io.vertx.core.buffer.Buffer;
  * <p>解码是编码的逆过程，就像"拆快递"：
  * <pre>
  *   ┌──────────────────────────────────────────────────────────────────────┐
- *   │                    解码流程（拆快递）                                 │
+ *   │                    解码流程（拆快递）                                    │
  *   │                                                                      │
- *   │  二进制 Buffer（从网络收到的原始数据）                                │
+ *   │  二进制 Buffer（从网络收到的原始数据）                                     │
  *   │       │                                                              │
  *   │       ▼                                                              │
  *   │  ┌────────────────────────────────────────────────────────────────┐  │
- *   │  │  第1步：验真（校验魔数）                                       │  │
+ *   │  │  第1步：验真（校验魔数）                                           │  │
  *   │  │                                                                │  │
- *   │  │  读取 byte 0，检查是否等于 PROTOCOL_MAGIC                      │  │
- *   │  │  如果不匹配 → 抛异常"消息 magic 非法"                          │  │
- *   │  │  类比：收到"银行来信"，先看有没有银行印章                       │  │
+ *   │  │  读取 byte 0，检查是否等于 PROTOCOL_MAGIC                          │  │
+ *   │  │  如果不匹配 → 抛异常"消息 magic 非法"                               │  │
+ *   │  │  类比：收到"银行来信"，先看有没有银行印章                              │  │
  *   │  └────────────────────────────────────────────────────────────────┘  │
  *   │       │                                                              │
  *   │       ▼                                                              │
  *   │  ┌────────────────────────────────────────────────────────────────┐  │
- *   │  │  第2步：读快递单（解析 Header 各字段）                         │  │
- *   │  │                                                                │  │
+ *   │  │  第2步：读快递单（解析 Header 各字段）                               │  │
+ *   │  │                                                               │  │
  *   │  │  byte  0:   magic       → header.magic                        │  │
  *   │  │  byte  1:   version     → header.version                      │  │
  *   │  │  byte  2:   serializer  → header.serializer                   │  │
@@ -43,35 +44,35 @@ import io.vertx.core.buffer.Buffer;
  *   │  │  byte  4:   status      → header.status                       │  │
  *   │  │  byte  5-12: requestId  → header.requestId (long)             │  │
  *   │  │  byte 13-16: bodyLength → header.bodyLength (int)             │  │
- *   │  │                                                                │  │
- *   │  │  注意：& 0xFF 将 byte 转为无符号 int                           │  │
- *   │  │  Java 的 byte 是有符号的（-128~127），直接转 int 会出现符号问题 │  │
- *   │  │  例如：byte 0xFF = -1，但 int 应该是 255                      │  │
+ *   │  │                                                               │  │
+ *   │  │  注意：& 0xFF 将 byte 转为无符号 int                              │  │
+ *   │  │  Java 的 byte 是有符号的（-128~127），直接转 int 会出现符号问题       │  │
+ *   │  │  例如：byte 0xFF = -1，但 int 应该是 255                          │  │
  *   │  └────────────────────────────────────────────────────────────────┘  │
  *   │       │                                                              │
  *   │       ▼                                                              │
  *   │  ┌────────────────────────────────────────────────────────────────┐  │
- *   │  │  第3步：精确取件（按 bodyLength 读取 body）                    │  │
+ *   │  │  第3步：精确取件（按 bodyLength 读取 body）                         │  │
  *   │  │                                                                │  │
- *   │  │  bodyBytes = buffer.getBytes(17, 17 + bodyLength)             │  │
- *   │  │  只读指定长度，不读多余数据 —— 这就是解决粘包的关键！          │  │
- *   │  │  即使 Buffer 中后面还有其他消息的数据，也不会误读              │  │
+ *   │  │  bodyBytes = buffer.getBytes(17, 17 + bodyLength)              │  │
+ *   │  │  只读指定长度，不读多余数据 —— 这就是解决粘包的关键！                    │  │
+ *   │  │  即使 Buffer 中后面还有其他消息的数据，也不会误读                      │  │
  *   │  └────────────────────────────────────────────────────────────────┘  │
  *   │       │                                                              │
  *   │       ▼                                                              │
  *   │  ┌────────────────────────────────────────────────────────────────┐  │
- *   │  │  第4步：拆信封（反序列化 Body）                                │  │
+ *   │  │  第4步：拆信封（反序列化 Body）                                     │  │
  *   │  │                                                                │  │
- *   │  │  根据 header.serializer 选择反序列化器：                       │  │
- *   │  │    JDK(0) / JSON(1) / Kryo(2) / Hessian(3)                    │  │
- *   │  │  根据 header.type 确定反序列化目标类型：                       │  │
- *   │  │    REQUEST  → RpcRequest                                      │  │
- *   │  │    RESPONSE → RpcResponse                                     │  │
- *   │  │    HEART_BEAT / OTHERS → 暂不支持                             │  │
+ *   │  │  根据 header.serializer 选择反序列化器：                           │  │
+ *   │  │    JDK(0) / JSON(1) / Kryo(2) / Hessian(3)                     │  │
+ *   │  │  根据 header.type 确定反序列化目标类型：                            │  │
+ *   │  │    REQUEST  → RpcRequest                                       │  │
+ *   │  │    RESPONSE → RpcResponse                                      │  │
+ *   │  │    HEART_BEAT / OTHERS → 暂不支持                                │  │
  *   │  └────────────────────────────────────────────────────────────────┘  │
  *   │       │                                                              │
  *   │       ▼                                                              │
- *   │  ProtocolMessage 对象（完整的信封 + 信纸）                           │
+ *   │  ProtocolMessage 对象（完整的信封 + 信纸）                                │
  *   └──────────────────────────────────────────────────────────────────────┘
  * </pre>
  *

@@ -21,13 +21,13 @@ import java.util.concurrent.CompletableFuture;
  *   │                                                              │
  *   │    +doRequest(request, metaInfo): RpcResponse                │
  *   │      │                                                       │
- *   │      ├── 同步阻塞调用，等待响应后返回                         │
- *   │      └── 适用于简单场景，调用方希望直接拿到结果              │
+ *   │      ├── 同步阻塞调用，等待响应后返回                             │
+ *   │      └── 适用于简单场景，调用方希望直接拿到结果                     │
  *   │                                                              │
  *   │    +doRequestAsync(request, metaInfo): CompletableFuture     │
  *   │      │                                                       │
- *   │      ├── 异步非阻塞调用，立即返回 Future                    │
- *   │      └── 适用于并发场景，不阻塞当前线程                      │
+ *   │      ├── 异步非阻塞调用，立即返回 Future                          │
+ *   │      └── 适用于并发场景，不阻塞当前线程                            │
  *   │                                                              │
  *   │         ┌─────────────────────┬─────────────────────┐        │
  *   │         ▼                     ▼                     │        │
