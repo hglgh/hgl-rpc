@@ -15,24 +15,24 @@ import com.hgl.hglrpc.RpcApplication;
  *   消费者的启动之旅：
  *
  *   ┌─────────────────────────────────────────────────┐
- *   │              ConsumerBootstrap.init()            │
+ *   │              ConsumerBootstrap.init()           │
  *   └──────────────────────┬──────────────────────────┘
  *                          │
  *                          v
  *   ┌─────────────────────────────────────────────────┐
- *   │           RpcApplication.init()                  │
- *   │                                                  │
- *   │   1. 读取 RPC 配置（从配置文件、环境变量等）       │
- *   │   2. 初始化注册中心连接（准备查地址簿的能力）      │
- *   │                                                  │
+ *   │           RpcApplication.init()                 │
+ *   │                                                 │
+ *   │   1. 读取 RPC 配置（从配置文件、环境变量等）           │
+ *   │   2. 初始化注册中心连接（准备查地址簿的能力）           │
+ *   │                                                 │
  *   └──────────────────────┬──────────────────────────┘
  *                          │
  *                          v
  *   ┌─────────────────────────────────────────────────┐
- *   │           准备就绪！可以开始调用远程服务了          │
- *   │                                                  │
- *   │   ServiceProxyFactory.getProxy(XxxService.class) │
- *   │   xxxService.someMethod(args)                    │
+ *   │           准备就绪！可以开始调用远程服务了            │
+ *   │                                                 │
+ *   │   ServiceProxyFactory.getProxy(XxxService.class)│
+ *   │   xxxService.someMethod(args)                   │
  *   └─────────────────────────────────────────────────┘
  * </pre>
  *

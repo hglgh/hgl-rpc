@@ -44,6 +44,8 @@ import lombok.Data;
  *   circuitBreakerEnabled false      是否启用熔断器
  *   circuitBreakerFailureThreshold 5  熔断器失败阈值
  *   circuitBreakerOpenTimeoutMs  30000  熔断器打开超时（毫秒）
+ *   registerThreadPoolSize  0        服务注册线程池大小（0=自动计算）
+ *   registerThreadNamePrefix provider-register 注册线程名前缀
  * </pre>
  *
  * @Author HGL
@@ -134,4 +136,32 @@ public class RpcConfig {
      * </ul>
      */
     private long circuitBreakerOpenTimeoutMs = 30000L;
+
+    /**
+     * 服务注册线程池大小 —— "并发开店的工作窗口数"
+     *
+     * <p>默认值 0（自动计算）。当值为 0 或负数时，框架会根据服务数量和 CPU 核心数
+     * 自动计算合适的线程池大小：</p>
+     * <pre>
+     *   实际线程数 = min(待注册服务数量, CPU核心数 * 2)
+     * </pre>
+     *
+     * <p>如果显式配置了正整数（如 4、8），则使用配置值。</p>
+     *
+     * <p>调优建议：</p>
+     * <ul>
+     *   <li>服务数量少（&lt; 10）：保持默认即可</li>
+     *   <li>服务数量多且注册中心网络延迟大：可适当调大（如 16、32）</li>
+     *   <li>注册中心连接数有限制：需控制并发，避免超限</li>
+     * </ul>
+     */
+    private int registerThreadPoolSize = 0;
+
+    /**
+     * 注册线程名前缀 —— "开店员工的工号前缀"
+     *
+     * <p>默认值 {@code provider-register}。线程池创建的线程会以此为前缀命名，
+     * 方便在日志和线程 dump 中快速定位注册相关线程。</p>
+     */
+    private String registerThreadNamePrefix = "provider-register";
 }
